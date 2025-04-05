@@ -26,7 +26,7 @@ wire mem_store;
 wire[1:0] mem_access_size;
 wire load_signext;
 wire rf_write_en_memory;
-wire[31:0] rf_dest_memory;
+wire[4:0] rf_dest_memory;
 wire[31:0] rs2_data_memory;
 wire[31:0] alu_result_memory;
 wire[31:0] pc_memory;
@@ -96,25 +96,46 @@ wire load_byte;
 wire load_half;
 wire load_word;
 wire[31:0] load_result;
-wire[31:0] load_data_byte;
-wire[31:0] load_data_half;
+wire[7:0] load_data_byte;
+wire[15:0] load_data_half;
 
-assign load_byte = mem_load_delay & mem_access_size_delay[0];
-assign load_half = mem_load_delay & mem_access_size_delay[1];
-assign load_word = mem_load_delay & ~load_byte & ~load_half;
+// assign load_byte = mem_load_delay & mem_access_size_delay[0];
+// assign load_half = mem_load_delay & mem_access_size_delay[1];
+// assign load_word = mem_load_delay & ~load_byte & ~load_half;
+// 
+// assign load_data_byte = ({ 8{addr_low2bit_delay == 2'b00}} & mem_read_data[ 7: 0]) |
+//                         ({ 8{addr_low2bit_delay == 2'b01}} & mem_read_data[15: 8]) |
+//                         ({ 8{addr_low2bit_delay == 2'b10}} & mem_read_data[23:16]) |
+//                         ({ 8{addr_low2bit_delay == 2'b11}} & mem_read_data[31:24]);
+// assign load_data_half = ({16{addr_low2bit_delay == 2'b00}} & mem_read_data[15: 0]) |
+//                         ({16{addr_low2bit_delay == 2'b10}} & mem_read_data[31:16]);
+// 
+// assign load_result =  ({32{load_byte &  load_signext_delay}} & {{24{load_data_byte[ 7]}}, load_data_byte}) |
+//                       ({32{load_byte & ~load_signext_delay}} & {24'b0, load_data_byte}) |
+//                       ({32{load_half &  load_signext_delay}} & {{16{load_data_half[15]}}, load_data_half}) |
+//                       ({32{load_half & ~load_signext_delay}} & {16'b0, load_data_half}) |
+//                       ({32{load_word}} & mem_read_data);
+// 
 
-assign load_data_byte = ({ 8{addr_low2bit_delay == 2'b00}} & mem_read_data[ 7: 0]) |
-                        ({ 8{addr_low2bit_delay == 2'b01}} & mem_read_data[15: 8]) |
-                        ({ 8{addr_low2bit_delay == 2'b10}} & mem_read_data[23:16]) |
-                        ({ 8{addr_low2bit_delay == 2'b11}} & mem_read_data[31:24]);
-assign load_data_half = ({16{addr_low2bit_delay == 2'b00}} & mem_read_data[15: 0]) |
-                        ({16{addr_low2bit_delay == 2'b10}} & mem_read_data[31:16]);
+assign load_byte = mem_load & mem_access_size[0];
+assign load_half = mem_load & mem_access_size[1];
+assign load_word = mem_load & ~load_byte & ~load_half;
 
+assign load_data_byte = ({ 8{addr_low2bit == 2'b00}} & mem_read_data[ 7: 0]) |
+                        ({ 8{addr_low2bit == 2'b01}} & mem_read_data[15: 8]) |
+                        ({ 8{addr_low2bit == 2'b10}} & mem_read_data[23:16]) |
+                        ({ 8{addr_low2bit == 2'b11}} & mem_read_data[31:24]);
+
+assign load_data_half = ({16{addr_low2bit == 2'b00}} & mem_read_data[15: 0]) |
+                        ({16{addr_low2bit == 2'b10}} & mem_read_data[31:16]);
+ 
 assign load_result =  ({32{load_byte &  load_signext}} & {{24{load_data_byte[ 7]}}, load_data_byte}) |
                       ({32{load_byte & ~load_signext}} & {24'b0, load_data_byte}) |
                       ({32{load_half &  load_signext}} & {{16{load_data_half[15]}}, load_data_half}) |
                       ({32{load_half & ~load_signext}} & {16'b0, load_data_half}) |
                       ({32{load_word}} & mem_read_data);
+
+// assign load_result    = mem_read_data;
 
 // store 
 wire store_byte;
@@ -123,30 +144,49 @@ wire store_word;
 wire[3:0] store_we_byte;
 wire[3:0] store_we_half;
 wire[3:0] store_we;
+wire[31:0] store_data_byte;
+wire[31:0] store_data_half;
 wire[31:0] store_result;
+wire[31:0] store_data_word;
 
 assign store_byte = mem_store & mem_access_size[0];
 assign store_half = mem_store & mem_access_size[1];
 assign store_word = mem_store & ~store_byte & ~store_half;
 
-assign store_we_byte      = {addr_low2bit == 2'b11, addr_low2bit == 2'b10, 
+assign store_we_byte    = {addr_low2bit == 2'b11, addr_low2bit == 2'b10, 
                             addr_low2bit == 2'b01, addr_low2bit == 2'b00};
-assign store_we_half      = {addr_low2bit == 2'b10, addr_low2bit == 2'b10, 
+assign store_we_half    = {addr_low2bit == 2'b10, addr_low2bit == 2'b10, 
                             addr_low2bit == 2'b00, addr_low2bit == 2'b00};
 
 assign store_we         = (({4{store_byte}} & store_we_byte) |
                            ({4{store_half}} & store_we_half) |
                            ({4{store_word}}));
 
+assign store_data_byte  =   {{8{store_we_byte[3]}} & rs2_data_memory[7:0],
+                             {8{store_we_byte[2]}} & rs2_data_memory[7:0],
+                             {8{store_we_byte[1]}} & rs2_data_memory[7:0],
+                             {8{store_we_byte[0]}} & rs2_data_memory[7:0]};
+
+assign store_data_half  =   {{8{store_we_half[3]}} & rs2_data_memory[15:8],
+                             {8{store_we_half[2]}} & rs2_data_memory[ 7:0],
+                             {8{store_we_half[1]}} & rs2_data_memory[15:8],
+                             {8{store_we_half[0]}} & rs2_data_memory[ 7:0]};
+
+assign store_data_word  = rs2_data_memory;
+
+assign store_result     = ({32{store_byte}} & store_data_byte) |
+                          ({32{store_half}} & store_data_half) |
+                          ({32{store_word}} & store_data_word);
+// assign store_result     = rs2_data_memory;
+
 assign data_sram_we     = store_we;
-assign data_sram_wdata  = rs2_data_memory;
+assign data_sram_wdata  = store_result;
 
 /********************* result select *********************/
 wire[31:0] final_result;
 assign final_result = alu_result_memory;
 /******************** output bus ********************/
 assign forward_result_memory = alu_result_memory;
-assign load_result_o    = load_result;
 
 assign m_to_w_bus = {
     mem_load             ,//[102:102]
