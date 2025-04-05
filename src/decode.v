@@ -38,8 +38,8 @@ end
 
 reg hold_inst_sign;
 reg[31:0] inst_buffer;
-always @(posedge clk) begin
-    if(reset) begin
+always @(posedge clk ) begin
+    if(reset || flush_decode) begin
         inst_buffer <= 32'h0;
         hold_inst_sign <= 1'b0;
     end else if(stall_decode)
@@ -52,8 +52,8 @@ always @(posedge clk) begin
     end
 end
 
-assign {pc_decode} = f_to_d_bus_r[63:32];
-assign inst_decode = hold_inst_sign ? inst_buffer : f_to_d_bus[31:0];
+assign {pc_decode, inst_decode} = f_to_d_bus_r;
+//assign inst_decode = hold_inst_sign ? inst_buffer : f_to_d_bus[31:0];
 
 /**************** valid ******************/
 reg valid_decode;
@@ -94,7 +94,7 @@ wire funct7_20H;
 
 wire[6:0] opcode;
 wire[2:0] funct3;
-wire[4:0] funct7;
+wire[6:0] funct7;
 wire[4:0] dest;
 wire[4:0] rd_addr_decode;
 wire[4:0] rs1_addr_decode;
@@ -234,7 +234,7 @@ assign inst_xor     = opcode_op & funct3_100 & funct7_00H;
 assign inst_srl     = opcode_op & funct3_101 & funct7_00H;
 assign inst_sra     = opcode_op & funct3_101 & funct7_20H;
 assign inst_or      = opcode_op & funct3_110 & funct7_00H;
-assign inst_add     = opcode_op & funct3_111 & funct7_00H;
+assign inst_and     = opcode_op & funct3_111 & funct7_00H;
 // fence 
 assign inst_fence   = opcode_fence;
 /************** instruction format **************/
@@ -253,7 +253,7 @@ assign j_type = opcode_jal;
 
 /************** alu options **************/
 wire[`ALU_OP_WD-1:0] alu_op;
-assign alu_op[`ALU_ADD] = opcode_load || opcode_store || inst_add || inst_addi;
+assign alu_op[`ALU_ADD] = opcode_load || opcode_store || inst_add || inst_addi || inst_jal || inst_jalr || inst_auipc;
 assign alu_op[`ALU_SUB] = inst_sub;
 assign alu_op[`ALU_SLT] = inst_slt || inst_slti;
 assign alu_op[`ALU_SLTU]= inst_sltu || inst_sltiu;
@@ -320,7 +320,7 @@ assign rf_dest_decode = dest;
 wire src1_is_pc;
 wire src2_is_imm;
 wire src2_is_4;
-wire imm_decode;
+wire[31:0] imm_decode;
 assign imm_decode =     ({32{i_type}} & i_imm) |
                         ({32{s_type}} & s_imm) |
                         ({32{b_type}} & b_imm) |
@@ -334,8 +334,8 @@ assign src2_is_imm  =   opcode_lui || opcode_auipc || opcode_load || opcode_stor
 
 /********************** branch and jump **********************/
 // to handle hazard
-wire branch_inst;
-assign branch_inst = opcode_branch;
+wire need_use_rs;
+assign need_use_rs = opcode_branch || opcode_jalr;
 // get target
 wire[31:0] jal_target;
 wire[31:0] jalr_target;
@@ -355,7 +355,7 @@ assign rs1_lt_rs2   =   ( rs1_data_decode[31] & ~rs2_data_decode[31]) ? 1'b1 :
 // result
 assign bj_taken_o   =   ((inst_beq && rs1_eq_rs2) || (inst_bne && !rs1_eq_rs2) ||
                          (inst_blt && rs1_lt_rs2) || (inst_bge && !rs1_lt_rs2) ||
-                         (inst_bltu && rs1_lt_rs2_u) || (inst_bgeu && rs1_lt_rs2_u) ||
+                         (inst_bltu && rs1_lt_rs2_u) || (inst_bgeu && !rs1_lt_rs2_u) ||
                          (inst_jal || inst_jalr)
                         ) && valid_decode;
 assign bj_target_o  =   ({32{opcode_jal }} & jal_target ) |
@@ -383,8 +383,7 @@ assign d_to_e_bus = {
 };
 
 assign d_to_h_bus = {
-    branch_inst        ,//[11:11]
-    bj_taken_o         ,//[10:10]
+    need_use_rs        ,//[10:10]
     rs1_addr_decode    ,//[ 9: 5]
     rs2_addr_decode     //[ 4: 0]
 };

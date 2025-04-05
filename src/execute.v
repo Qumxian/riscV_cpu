@@ -1,6 +1,6 @@
 `include "cpu_defs.vh"
 
-module excute (
+module execute (
     input  wire                      clk,
     input  wire                      reset,
     input  wire                      previous_valid_i,
@@ -9,14 +9,14 @@ module excute (
     input  wire                      flush_execute,
     input  wire                      stall_execute,
 
-    output wire [`E_TO_H_BUS_WD-1:0] e_to_h_bus,
     input  wire [ 1:0]               forward_rs1_select_e,
     input  wire [ 1:0]               forward_rs2_select_e,
     input  wire [31:0]               forward_result_memory,
     input  wire [31:0]               forward_result_writeback,
 
     input  wire [`D_TO_E_BUS_WD-1:0] d_to_e_bus,
-    output wire [`E_TO_M_BUS_WD-1:0] e_to_m_bus
+    output wire [`E_TO_M_BUS_WD-1:0] e_to_m_bus,
+    output wire [`E_TO_H_BUS_WD-1:0] e_to_h_bus
 );
 /**************** input bus ****************/
 wire[4:0] rs1_addr_execute;
@@ -86,7 +86,7 @@ assign right_rs1_data = forward_rs1_select_e[1] ? forward_result_memory:
                         rs1_data_execute;
 assign right_rs2_data = forward_rs2_select_e[1] ? forward_result_memory:
                         forward_rs2_select_e[0] ? forward_result_writeback:
-                        rs1_data_execute;
+                        rs2_data_execute;
 
 wire[31:0] src1_execute;
 wire[31:0] src2_execute;
@@ -111,7 +111,7 @@ assign e_to_m_bus = {
     load_signext_execute   ,//[102:102] 
     rf_write_en_execute    ,//[101:101] 
     rf_dest_execute        ,//[100: 96] 
-    rs2_data_execute       ,//[ 95: 64] 
+    right_rs2_data         ,//[ 95: 64] 
     alu_result             ,//[ 63: 32]  
     pc_execute              //[ 31:  0]  
 };

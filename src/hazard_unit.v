@@ -8,6 +8,8 @@ module hazard_unit (
     input  wire [`M_TO_H_BUS_WD-1:0] m_to_h_bus,
     input  wire [`W_TO_H_BUS_WD-1:0] w_to_h_bus,
 
+    input  wire                      bj_taken,
+
     output wire                      stall_fetch,
 
     output wire                      stall_decode,
@@ -35,8 +37,7 @@ wire [4:0] rs2_addr_e;
 
 wire       mem_load_e;
 wire       mem_load_m;
-wire       branch_inst;
-wire       bj_taken;
+wire       need_use_rs;
 wire       rf_write_en_e;
 wire       rf_write_en_m;
 wire       rf_write_en_w;
@@ -45,8 +46,7 @@ wire       ld_stall;
 wire       br_stall;
 
 assign {
-    branch_inst,
-    bj_taken,
+    need_use_rs,
     rs1_addr_d,
     rs2_addr_d
 } = d_to_h_bus;
@@ -84,7 +84,7 @@ assign forward_rs2_select_e = (rf_dest_m != 5'h0 && rf_write_en_m && (rs2_addr_e
 
 assign ld_stall = (rf_dest_e != 5'h0 && mem_load_e && (rs1_addr_d == rf_dest_e || rs2_addr_d == rf_dest_e));
 
-assign br_stall = branch_inst && ((rf_dest_e != 5'h0 && rf_write_en_e && (rs1_addr_d == rf_dest_e || rs2_addr_d == rf_dest_e)) ||
+assign br_stall = need_use_rs && ((rf_dest_e != 5'h0 && rf_write_en_e && (rs1_addr_d == rf_dest_e || rs2_addr_d == rf_dest_e)) ||
                  (rf_dest_m != 5'h0 && mem_load_m && (rs1_addr_d == rf_dest_m || rs2_addr_d == rf_dest_m)));
 
 assign stall_fetch  = stall_decode;

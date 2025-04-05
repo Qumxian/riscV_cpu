@@ -11,11 +11,13 @@ module write_back (
     output wire [`W_TO_H_BUS_WD-1 :0] w_to_h_bus,
     input  wire [`M_TO_W_BUS_WD-1 :0] m_to_w_bus,
     output wire [`W_TO_RF_BUS_WD-1:0] w_to_rf_bus,
+
     // trace debug interface
+    output wire        debug_wb_have_inst,
     output wire [31:0] debug_wb_pc,
-    output wire [ 3:0] debug_wb_rf_we,
-    output wire [ 4:0] debug_wb_rf_wnum,
-    output wire [31:0] debug_wb_rf_wdata
+    output wire        debug_wb_ena,
+    output wire [ 4:0] debug_wb_reg,
+    output wire [31:0] debug_wb_value
 );
 /**************** input bus ****************/
 wire mem_load_writeback;
@@ -36,13 +38,15 @@ end
 
 assign {
     mem_load_writeback      ,
+    load_result_writeback   ,
     alu_result_writeback    ,
     rf_write_en_writeback   ,
     rf_dest_writeback       ,
     pc_writeback            
-} = {m_to_w_bus_r[102], m_to_w_bus_r[69:0]};
+} = m_to_w_bus_r;
+//} = {m_to_w_bus_r[102], m_to_w_bus_r[69:0]};
 
-assign load_result_writeback = m_to_w_bus[101:70];
+//assign load_result_writeback = m_to_w_bus[101:70];
 
 /**************** valid ******************/
 reg  valid_writeback;
@@ -76,4 +80,11 @@ assign w_to_h_bus = {
     rf_dest_writeback       ,//[5:1]
     rf_write_en_writeback    //[0:0]
 };
+/****************** debug ******************/
+assign debug_wb_have_inst = valid_writeback;
+assign debug_wb_pc        = pc_writeback;
+assign debug_wb_ena       = rf_write_en_o;
+assign debug_wb_reg       = rf_dest_o;
+assign debug_wb_value     = rf_write_data_o;
+
 endmodule

@@ -1,6 +1,6 @@
 `include "cpu_defs.vh"
 
-module mycpu_top(
+module riscv_core (
     input  wire        clk,
     input  wire        resetn,
     // inst sram interface
@@ -16,10 +16,11 @@ module mycpu_top(
     output wire [31:0] data_sram_wdata,
     input  wire [31:0] data_sram_rdata,
     // trace debug interface
+    output wire        debug_wb_have_inst,
     output wire [31:0] debug_wb_pc,
-    output wire [ 3:0] debug_wb_rf_we,
-    output wire [ 4:0] debug_wb_rf_wnum,
-    output wire [31:0] debug_wb_rf_wdata
+    output wire        debug_wb_ena,
+    output wire [ 4:0] debug_wb_reg,
+    output wire [31:0] debug_wb_value
 );
 reg  reset;
 always @(posedge clk) reset <= ~resetn;
@@ -105,7 +106,8 @@ execute u_execute(
     .forward_result_memory          (forward_result_memory          ),
     .forward_result_writeback       (forward_result_writeback       ),
     .d_to_e_bus                     (d_to_e_bus                     ),
-    .e_to_m_bus                     (e_to_m_bus                     )
+    .e_to_m_bus                     (e_to_m_bus                     ),
+    .e_to_h_bus                     (e_to_h_bus                     )
 );
 
 memory u_memory(
@@ -135,10 +137,11 @@ write_back u_write_back(
     .w_to_h_bus                     (w_to_h_bus                     ),
     .m_to_w_bus                     (m_to_w_bus                     ),
     .w_to_rf_bus                    (w_to_rf_bus                    ),
+    .debug_wb_have_inst             (debug_wb_have_inst             ),
     .debug_wb_pc                    (debug_wb_pc                    ),
-    .debug_wb_rf_we                 (debug_wb_rf_we                 ),
-    .debug_wb_rf_wnum               (debug_wb_rf_wnum               ),
-    .debug_wb_rf_wdata              (debug_wb_rf_wdata              )
+    .debug_wb_ena                   (debug_wb_ena                   ),
+    .debug_wb_reg                   (debug_wb_reg                   ),
+    .debug_wb_value                 (debug_wb_value                 )
 );
 
 hazard_unit u_hazard_unit(
@@ -148,6 +151,7 @@ hazard_unit u_hazard_unit(
     .e_to_h_bus                     (e_to_h_bus                     ),
     .m_to_h_bus                     (m_to_h_bus                     ),
     .w_to_h_bus                     (w_to_h_bus                     ),
+    .bj_taken                       (bj_taken                       ),
     .stall_fetch                    (stall_fetch                    ),
     .stall_decode                   (stall_decode                   ),
     .flush_decode                   (flush_decode                   ),
