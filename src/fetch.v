@@ -46,7 +46,7 @@ assign inst_fetch = inst_sram_rdata;
 
 always @(posedge clk) begin
     if(reset) begin 
-        pc <= 32'hfffffffc;
+        pc <= 32'h7fff_fffc;
     end else if(!stall_fetch) begin
         pc <= next_pc;
     end

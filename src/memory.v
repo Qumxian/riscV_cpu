@@ -16,6 +16,7 @@ module memory(
 
     output wire                      data_sram_en,
     output wire[ 3:0]                data_sram_we,
+    output wire[ 1:0]                data_sram_mask,
     output wire[31:0]                data_sram_addr,
     output wire[31:0]                data_sram_wdata,
     input  wire[31:0]                data_sram_rdata
@@ -117,6 +118,10 @@ wire[15:0] load_data_half;
 //                       ({32{load_word}} & mem_read_data);
 // 
 
+assign data_sram_mask = mem_load ? 2'h2 : 
+                        mem_access_size[0] ? 2'h0 :
+                        mem_access_size[1] ? 2'h1 : 2'h2;
+
 assign load_byte = mem_load & mem_access_size[0];
 assign load_half = mem_load & mem_access_size[1];
 assign load_word = mem_load & ~load_byte & ~load_half;
@@ -162,22 +167,22 @@ assign store_we         = (({4{store_byte}} & store_we_byte) |
                            ({4{store_half}} & store_we_half) |
                            ({4{store_word}}));
 
-assign store_data_byte  =   {{8{store_we_byte[3]}} & rs2_data_memory[7:0],
-                             {8{store_we_byte[2]}} & rs2_data_memory[7:0],
-                             {8{store_we_byte[1]}} & rs2_data_memory[7:0],
-                             {8{store_we_byte[0]}} & rs2_data_memory[7:0]};
-
-assign store_data_half  =   {{8{store_we_half[3]}} & rs2_data_memory[15:8],
-                             {8{store_we_half[2]}} & rs2_data_memory[ 7:0],
-                             {8{store_we_half[1]}} & rs2_data_memory[15:8],
-                             {8{store_we_half[0]}} & rs2_data_memory[ 7:0]};
-
-assign store_data_word  = rs2_data_memory;
-
-assign store_result     = ({32{store_byte}} & store_data_byte) |
-                          ({32{store_half}} & store_data_half) |
-                          ({32{store_word}} & store_data_word);
-// assign store_result     = rs2_data_memory;
+// assign store_data_byte  =   {{8{store_we_byte[3]}} & rs2_data_memory[7:0],
+//                              {8{store_we_byte[2]}} & rs2_data_memory[7:0],
+//                              {8{store_we_byte[1]}} & rs2_data_memory[7:0],
+//                              {8{store_we_byte[0]}} & rs2_data_memory[7:0]};
+// 
+// assign store_data_half  =   {{8{store_we_half[3]}} & rs2_data_memory[15:8],
+//                              {8{store_we_half[2]}} & rs2_data_memory[ 7:0],
+//                              {8{store_we_half[1]}} & rs2_data_memory[15:8],
+//                              {8{store_we_half[0]}} & rs2_data_memory[ 7:0]};
+// 
+// assign store_data_word  = rs2_data_memory;
+// 
+// assign store_result     = ({32{store_byte}} & store_data_byte) |
+//                           ({32{store_half}} & store_data_half) |
+//                           ({32{store_word}} & store_data_word);
+assign store_result     = rs2_data_memory;
 
 assign data_sram_we     = store_we;
 assign data_sram_wdata  = store_result;

@@ -2,7 +2,7 @@
 
 module riscv_core (
     input  wire        clk,
-    input  wire        resetn,
+    input  wire        reset,
     // inst sram interface
     output wire        inst_sram_en,
     output wire [ 3:0] inst_sram_we,
@@ -12,6 +12,7 @@ module riscv_core (
     // data sram interface
     output wire        data_sram_en,
     output wire [ 3:0] data_sram_we,
+    output wire [ 1:0] data_sram_mask,
     output wire [31:0] data_sram_addr,
     output wire [31:0] data_sram_wdata,
     input  wire [31:0] data_sram_rdata,
@@ -22,8 +23,6 @@ module riscv_core (
     output wire [ 4:0] debug_wb_reg,
     output wire [31:0] debug_wb_value
 );
-reg  reset;
-always @(posedge clk) reset <= ~resetn;
 
 wire        valid_fetch;
 wire        valid_decode;
@@ -123,6 +122,7 @@ memory u_memory(
     .forward_result_memory          (forward_result_memory          ),
     .data_sram_en                   (data_sram_en                   ),
     .data_sram_we                   (data_sram_we                   ),
+    .data_sram_mask                 (data_sram_mask                 ),
     .data_sram_addr                 (data_sram_addr                 ),
     .data_sram_wdata                (data_sram_wdata                ),
     .data_sram_rdata                (data_sram_rdata                )
